@@ -1,1 +1,1 @@
-kubernetes==v12.0.1
+kubernetes==v30.1.0
