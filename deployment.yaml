@@ -8,12 +8,12 @@ kind: ClusterRole
 metadata:
   name: k8s-events-to-slack-streamer
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - watch
+- apiGroups: [""]
+  resources: ["events", "pods", "nodes"]
+  verbs: ["watch", "list"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -26,7 +26,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: k8s-events-to-slack-streamer
-  namespace: default
+  namespace: observer
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -36,30 +36,24 @@ metadata:
     app: k8s-events-to-slack-streamer
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-events-to-slack-streamer
   template:
     metadata:
       labels:
         app: k8s-events-to-slack-streamer
     spec:
       automountServiceAccountToken: true
-      serviceAccount: k8s-events-to-slack-streamer
       serviceAccountName: k8s-events-to-slack-streamer
       containers:
-      - image: fivexl/kubernetes-events-to-slack:1.5.1
+      - image: YOUR_IMAGE_IN_DOCKERHUB
         imagePullPolicy: Always
         name: k8s-events-to-slack-streamer
         env:
         - name: K8S_EVENTS_STREAMER_INCOMING_WEB_HOOK_URL
-          value: PUT-WEB-HOOK-URL-HERE
-#        - name: K8S_EVENTS_STREAMER_NAMESPACE
-#          value: 'default'
-#        - name: K8S_EVENTS_STREAMER_DEBUG
-#          value: 'true'
+          value: YOUR_SLACK_WEB_HOOK_URL
         - name: K8S_EVENTS_STREAMER_SKIP_DELETE_EVENTS
-          value: 'True'
-#        It is imporatnt that you use <> around user names
-#        https://api.slack.com/docs/message-formatting#linking_to_channels_and_users
-#        - name: K8S_EVENTS_STREAMER_USERS_TO_NOTIFY
-#          value: '<@andrey9kin>'
+          value: "true"
         - name: K8S_EVENTS_STREAMER_LIST_OF_REASONS_TO_SKIP
-          value: 'Scheduled ScalingReplicaSet Pulling Pulled Created Started Killing SuccessfulMountVolume SuccessfulUnMountVolume'
+          value: 'Scheduled ScalingReplicaSet Pulling Created Pulled Started SuccessfulMountVolume SuccessfulUnMountVolume SuccessfulCreate'
